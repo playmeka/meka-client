@@ -1,0 +1,27 @@
+{
+  "name": "meka-socket",
+  "version": "0.0.1",
+  "main": "dist/server.js",
+  "author": "Hill Street Labs",
+  "license": "MIT",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch"
+  },
+  "dependencies": {
+    "ws": "^7.2.1"
+  },
+  "devDependencies": {
+    "@babel/cli": "^7.7.7",
+    "@babel/core": "^7.7.7",
+    "@babel/plugin-proposal-class-properties": "^7.7.4",
+    "@babel/plugin-proposal-decorators": "^7.7.4",
+    "@babel/plugin-transform-runtime": "^7.7.6",
+    "@babel/preset-env": "^7.7.7",
+    "@babel/runtime": "^7.7.7",
+    "@types/node": "^13.5.1",
+    "@types/ws": "^7.2.0",
+    "ts-node": "^8.6.2",
+    "typescript": "^3.7.5"
+  }
+}
