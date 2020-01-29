@@ -1,5 +1,5 @@
 {
-  "name": "meka-player-client",
+  "name": "@meka-js/client",
   "version": "0.0.1",
   "main": "dist/client.js",
   "author": "Hill Street Labs",

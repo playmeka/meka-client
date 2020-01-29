@@ -3,24 +3,28 @@ import WebSocket from "ws";
 
 type MessageJSON = { eventType: string; data?: any };
 
-class GameClient {
+export default class GameClient {
   ws: WebSocket;
   game: Game;
   gameUid: string;
+  websocketUrl: string;
+  onTickCallback: Function;
 
-  constructor(gameUid: string) {
-    this.gameUid = gameUid;
-    this.ws = new WebSocket(this.websocketUrl);
+  constructor(props: {
+    gameUid: string;
+    websocketUrl: string;
+    onTick?: Function;
+  }) {
+    this.gameUid = props.gameUid;
+    this.websocketUrl = props.websocketUrl || "ws://localhost:8000";
+    this.onTickCallback = props.onTick;
+    this.ws = new WebSocket(`${this.websocketUrl}/${this.gameUid}`);
     this.ws.on("open", this.open.bind(this));
     this.ws.on("message", this.handleMessage.bind(this));
     this.ws.on("tick", this.tick.bind(this));
     this.ws.on("start", this.start.bind(this));
     this.ws.on("end", this.end.bind(this));
     // TODO: add other event types
-  }
-
-  get websocketUrl() {
-    return `ws://localhost:8000/${this.gameUid}`;
   }
 
   open() {
@@ -44,7 +48,7 @@ class GameClient {
 
   async tick(data: { turn: number; actions: ActionJSON[] }) {
     if (data.turn != this.game.turn + 1) {
-      console.log("Out of sync!");
+      console.log("Out of sync!"); // TODO: request download when out of sync
       return;
     }
     const actions = data.actions.map(actionJSON =>
@@ -52,10 +56,7 @@ class GameClient {
     );
     this.game.turn += 1;
     await this.game.applyActions(actions);
-    console.log("Did turn", this.game.turn, actions);
+    this.onTickCallback(this.game);
     // TODO: send actions in response
   }
 }
-
-const client = new GameClient("PFH-1");
-console.log("Client", client);
