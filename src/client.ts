@@ -1,4 +1,4 @@
-import { Game, GameJSON } from "@meka-js/core";
+import { Game, GameJSON, Action, ActionJSON } from "@meka-js/core";
 import WebSocket from "ws";
 
 type MessageJSON = { eventType: string; data?: any };
@@ -15,6 +15,7 @@ class GameClient {
     this.ws.on("message", this.handleMessage.bind(this));
     this.ws.on("tick", this.tick.bind(this));
     this.ws.on("start", this.start.bind(this));
+    this.ws.on("end", this.end.bind(this));
     // TODO: add other event types
   }
 
@@ -32,16 +33,29 @@ class GameClient {
   }
 
   start(data: { game: GameJSON }) {
-    console.log("Start", data);
     this.game = Game.fromJSON(data.game);
     console.log("Started game: ", this.game);
-    // TODO
   }
 
-  tick(json: any) {
-    // TODO
-    console.log("Tick", json);
+  end(data: { game: GameJSON }) {
+    console.log("Ended game: ", data);
+    this.ws.close(1000, "Game ended");
+  }
+
+  async tick(data: { turn: number; actions: ActionJSON[] }) {
+    if (data.turn != this.game.turn + 1) {
+      console.log("Out of sync!");
+      return;
+    }
+    const actions = data.actions.map(actionJSON =>
+      Action.fromJSON(this.game, actionJSON)
+    );
+    this.game.turn += 1;
+    await this.game.applyActions(actions);
+    console.log("Did turn", this.game.turn, actions);
+    // TODO: send actions in response
   }
 }
 
-const client = new GameClient("12345");
+const client = new GameClient("PFH-1");
+console.log("Client", client);

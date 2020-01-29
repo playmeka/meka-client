@@ -1,7 +1,7 @@
 {
-  "name": "meka-socket",
+  "name": "meka-player-client",
   "version": "0.0.1",
-  "main": "dist/server.js",
+  "main": "dist/client.js",
   "author": "Hill Street Labs",
   "license": "MIT",
   "scripts": {
