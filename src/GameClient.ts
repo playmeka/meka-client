@@ -10,11 +10,6 @@ import {
 import WebSocket from "isomorphic-ws";
 import { User as UserModel } from "./api";
 
-const createWebSocketConnection = (url: string, jwt?: string) => {
-  url = jwt ? `${url}?token=${jwt}` : url;
-  return new WebSocket(url);
-};
-
 export type ClientJSON = { id: string; userId: string };
 type GameServerStatus = "open" | "ready" | "inprogress" | "paused" | "ended";
 type UserWrapper = { user: UserModel; isReady: boolean };
@@ -113,16 +108,19 @@ export default class GameClient extends EventEmitter {
     return this.userToClientMap[userId] || [];
   }
 
-  createWebSocket(webSocketUrl: string, jwt?: string) {
+  createWebSocket(webSocketUrl: string, webSocketToken: string) {
     return new Promise((resolve, reject) => {
-      const wsUrl = `${webSocketUrl}/game/${this.gameId}`;
-      this.ws = createWebSocketConnection(wsUrl, jwt);
-      if (!this.ws) throw new Error("Unable to connect to websocket: " + wsUrl);
-      this.ws.onmessage = this.handleMessage.bind(this);
-      this.ws.onopen = resolve.bind(this);
-      this.ws.onerror = (error: WebSocket.ErrorEvent) => {
-        reject(error);
-      };
+      const wsUrl = `${webSocketUrl}/game/${this.gameId}?token=${webSocketToken}`;
+      try {
+        this.ws = new WebSocket(wsUrl);
+        this.ws.onmessage = this.handleMessage.bind(this);
+        this.ws.onopen = resolve.bind(this);
+        this.ws.onerror = (error: WebSocket.ErrorEvent) => {
+          reject(error);
+        };
+      } catch (e) {
+        reject(e);
+      }
     });
   }
 

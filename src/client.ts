@@ -42,8 +42,9 @@ export default class MekaClient extends GameClient {
   async connect() {
     await this.requireAuth();
     const webSocketToken = await this.api.createWebSocketHandshakeToken();
-    await this.createWebSocket(this.webSocketUrl, webSocketToken);
-    // TODO: does process.on work in browser?
-    process.on("exit", () => this.disconnect());
+    return this.createWebSocket(this.webSocketUrl, webSocketToken).then(() => {
+      // TODO: does process.on work in browser?
+      process.on("exit", () => this.disconnect());
+    });
   }
 }
