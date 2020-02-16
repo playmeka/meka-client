@@ -10,11 +10,6 @@ import {
 import WebSocket from "isomorphic-ws";
 import { User as UserModel } from "./api";
 
-const createWebSocketConnection = (url: string, jwt?: string) => {
-  url = jwt ? `${url}?token=${jwt}` : url;
-  return new WebSocket(url);
-};
-
 export type ClientJSON = { id: string; userId: string };
 type GameServerStatus = "open" | "ready" | "inprogress" | "paused" | "ended";
 type UserWrapper = { user: UserModel; isReady: boolean };
@@ -113,16 +108,19 @@ export default class GameClient extends EventEmitter {
     return this.userToClientMap[userId] || [];
   }
 
-  createWebSocket(webSocketUrl: string, jwt?: string) {
+  createWebSocket(webSocketUrl: string, webSocketToken: string) {
     return new Promise((resolve, reject) => {
-      const wsUrl = `${webSocketUrl}/game/${this.gameId}`;
-      this.ws = createWebSocketConnection(wsUrl, jwt);
-      if (!this.ws) throw new Error("Unable to connect to websocket: " + wsUrl);
-      this.ws.onmessage = this.handleMessage.bind(this);
-      this.ws.onopen = resolve.bind(this);
-      this.ws.onerror = (error: WebSocket.ErrorEvent) => {
-        reject(error);
-      };
+      const wsUrl = `${webSocketUrl}/game/${this.gameId}?token=${webSocketToken}`;
+      try {
+        this.ws = new WebSocket(wsUrl);
+        this.ws.onmessage = this.handleMessage.bind(this);
+        this.ws.onopen = resolve.bind(this);
+        this.ws.onerror = (error: WebSocket.ErrorEvent) => {
+          reject(error);
+        };
+      } catch (e) {
+        reject(e);
+      }
     });
   }
 
@@ -164,7 +162,6 @@ export default class GameClient extends EventEmitter {
 
   handleMessage(message: { data: string }) {
     const json = JSON.parse(message.data);
-    console.log("MESSAGE", json.eventType, json.data, json.state);
     const typeToFunctionMap: { [key: string]: Function } = {
       download: this.handleDownload.bind(this),
       addclient: this.handleAddClient.bind(this),
@@ -206,22 +203,24 @@ export default class GameClient extends EventEmitter {
     this.importState(state);
   }
 
-  handleAddClient(state: GameServerJSON, _: ClientJSON) {
+  handleAddClient(state: GameServerJSON, data: ClientJSON) {
     this.importState(state);
-    // TODO: do anything wiht data?
+    this.emit("addclient", data);
   }
 
-  handleCloseClient(state: GameServerJSON, _: ClientJSON) {
+  handleCloseClient(state: GameServerJSON, data: ClientJSON) {
     this.importState(state);
-    // TODO: do anything with data?
+    this.emit("closeclient", data);
   }
 
-  handleJoinUser(state: GameServerJSON) {
+  handleJoinUser(state: GameServerJSON, data: UserModel) {
     this.importState(state);
+    this.emit("joinuser", data);
   }
 
-  handleReadyUser(_: GameServerJSON, data: UserModel) {
-    this.userMap[data.uid] = { user: data, isReady: true };
+  handleReadyUser(state: GameServerJSON, data: UserModel) {
+    this.importState(state);
+    this.emit("readyuser", data);
   }
 
   async handleTick(
@@ -238,34 +237,42 @@ export default class GameClient extends EventEmitter {
       Action.fromJSON(this.game as Game, actionJSON)
     );
     await this.game.importTurn(data.turn, actions);
+    this.emit("tick", actions);
   }
 
   handleReady(state: GameServerJSON) {
     this.importState(state);
+    this.emit("ready");
   }
 
   handleUnready(state: GameServerJSON) {
     this.importState(state);
+    this.emit("unready");
   }
 
   handleStart(state: GameServerJSON) {
     this.importState(state);
+    this.emit("start");
   }
 
   handlePause(state: GameServerJSON) {
     this.importState(state);
+    this.emit("pause");
   }
 
   handleUnpause(state: GameServerJSON) {
     this.importState(state);
+    this.emit("unpause");
   }
 
-  handleForfeit(state: GameServerJSON) {
+  handleForfeit(state: GameServerJSON, data: UserModel) {
     this.importState(state);
+    this.emit("forfeit", data);
   }
 
-  handleEnd(data: GameServerJSON) {
-    this.importState(data);
+  handleEnd(state: GameServerJSON) {
+    this.importState(state);
+    this.emit("end");
     this.ws.close(1000, "Game ended");
   }
 }

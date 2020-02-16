@@ -1,7 +1,6 @@
 import { EventEmitter } from "events";
 import fetch from "isomorphic-fetch";
 import some from "lodash/some";
-import { GameGenerateProps } from "@meka-js/core";
 
 export type User = {
   id: number;
@@ -47,6 +46,10 @@ export default class API extends EventEmitter {
     this.apiUrl = apiUrl || "";
   }
 
+  get authenticated() {
+    return !!this.jwt;
+  }
+
   async getGraphQL<T = any>(
     query: string,
     variables?: { [key: string]: any },
@@ -54,7 +57,6 @@ export default class API extends EventEmitter {
     jwt?: string
   ): Promise<T> {
     if (!apiUrl) apiUrl = this.apiUrl;
-
     const options: any = {
       method: "POST",
       headers: {
@@ -80,8 +82,7 @@ export default class API extends EventEmitter {
     variables: { [key: string]: any } = {},
     apiUrl?: string
   ) {
-    const jwt = this.jwt;
-    return this.getGraphQL<T>(query, variables, apiUrl, jwt);
+    return this.getGraphQL<T>(query, variables, apiUrl, this.jwt);
   }
 
   async authenticateWithApiKey(apiKey: string, apiSecret: string) {
@@ -92,12 +93,12 @@ export default class API extends EventEmitter {
         }
       }
     `;
-    const { authenticateWithApiKey } = await this.graphqlFetch<{
+    const { authenticateWithApiKey: response } = await this.graphqlFetch<{
       authenticateWithApiKey: {
         token: string;
       };
     }>(query, { apiKey, apiSecret });
-    return authenticateWithApiKey.token;
+    this.jwt = response.token;
   }
 
   async authenticateWithGithubToken(username: string, accessToken: string) {
@@ -108,47 +109,42 @@ export default class API extends EventEmitter {
         }
       }
     `;
-
-    const { authenticateWithGithubToken: token } = await this.graphqlFetch<{
+    const { authenticateWithGithubToken: response } = await this.graphqlFetch<{
       authenticateWithGithubToken: {
         token: string;
       };
-    }>(query, {
-      accessToken,
-      username
-    });
+    }>(query, { accessToken, username });
+    this.jwt = response.token;
+  }
 
-    return token.token;
+  async createWebSocketHandshakeToken() {
+    const query = `
+      mutation CreateWebSocketHandshakeToken {
+        createWebSocketHandshakeToken
+      }
+    `;
+    const { createWebSocketHandshakeToken: token } = await this.graphqlFetch<{
+      createWebSocketHandshakeToken: string;
+    }>(query);
+    return token;
   }
 
   async me() {
+    const query = `
+      query Me {
+        me {
+          username
+          avatarUrl
+          apiKey
+          email
+          apiSecret
+          uid
+        }
+      }
+    `;
     const { me } = await this.graphqlFetch<{
       me: User | null;
-    }>(`
-    query Me {
-      me {
-        username
-        avatarUrl
-        apiKey
-        email
-        apiSecret
-        uid
-      }
-    }
-    `);
-
+    }>(query);
     return me;
-  }
-
-  async createGame(gameProps: GameGenerateProps) {
-    const { game } = await fetch(`${process.env.API_URL}/games`, {
-      method: "post",
-      body: JSON.stringify({ gameProps }),
-      headers: {
-        "Content-Type": "application/json",
-        ...(this.jwt ? { Authorization: `Bearer ${this.jwt}` } : {})
-      }
-    }).then(handleJson);
-    return game;
   }
 }
