@@ -29,14 +29,20 @@ export default class MekaClient extends GameClient {
     this.jwt = props.jwt;
   }
 
+  async requireAuth() {
+    if (this.api.authenticated) return;
+    await this.api.authenticateWithApiKey(this.apiKey, this.apiSecret);
+  }
+
+  async me() {
+    await this.requireAuth();
+    return this.api.me();
+  }
+
   async connect() {
-    if (!this.jwt) {
-      this.jwt = await this.api.authenticateWithApiKey(
-        this.apiKey,
-        this.apiSecret
-      );
-    }
-    await this.createWebSocket(this.webSocketUrl, this.jwt);
+    await this.requireAuth();
+    const webSocketToken = await this.api.createWebSocketHandshakeToken();
+    await this.createWebSocket(this.webSocketUrl, webSocketToken);
     // TODO: does process.on work in browser?
     process.on("exit", () => this.disconnect());
   }

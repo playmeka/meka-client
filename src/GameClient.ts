@@ -164,7 +164,6 @@ export default class GameClient extends EventEmitter {
 
   handleMessage(message: { data: string }) {
     const json = JSON.parse(message.data);
-    console.log("MESSAGE", json.eventType, json.data, json.state);
     const typeToFunctionMap: { [key: string]: Function } = {
       download: this.handleDownload.bind(this),
       addclient: this.handleAddClient.bind(this),
@@ -206,22 +205,24 @@ export default class GameClient extends EventEmitter {
     this.importState(state);
   }
 
-  handleAddClient(state: GameServerJSON, _: ClientJSON) {
+  handleAddClient(state: GameServerJSON, data: ClientJSON) {
     this.importState(state);
-    // TODO: do anything wiht data?
+    this.emit("addclient", data);
   }
 
-  handleCloseClient(state: GameServerJSON, _: ClientJSON) {
+  handleCloseClient(state: GameServerJSON, data: ClientJSON) {
     this.importState(state);
-    // TODO: do anything with data?
+    this.emit("closeclient", data);
   }
 
-  handleJoinUser(state: GameServerJSON) {
+  handleJoinUser(state: GameServerJSON, data: UserModel) {
     this.importState(state);
+    this.emit("joinuser", data);
   }
 
-  handleReadyUser(_: GameServerJSON, data: UserModel) {
-    this.userMap[data.uid] = { user: data, isReady: true };
+  handleReadyUser(state: GameServerJSON, data: UserModel) {
+    this.importState(state);
+    this.emit("readyuser", data);
   }
 
   async handleTick(
@@ -238,34 +239,42 @@ export default class GameClient extends EventEmitter {
       Action.fromJSON(this.game as Game, actionJSON)
     );
     await this.game.importTurn(data.turn, actions);
+    this.emit("tick", actions);
   }
 
   handleReady(state: GameServerJSON) {
     this.importState(state);
+    this.emit("ready");
   }
 
   handleUnready(state: GameServerJSON) {
     this.importState(state);
+    this.emit("unready");
   }
 
   handleStart(state: GameServerJSON) {
     this.importState(state);
+    this.emit("start");
   }
 
   handlePause(state: GameServerJSON) {
     this.importState(state);
+    this.emit("pause");
   }
 
   handleUnpause(state: GameServerJSON) {
     this.importState(state);
+    this.emit("unpause");
   }
 
-  handleForfeit(state: GameServerJSON) {
+  handleForfeit(state: GameServerJSON, data: UserModel) {
     this.importState(state);
+    this.emit("forfeit", data);
   }
 
-  handleEnd(data: GameServerJSON) {
-    this.importState(data);
+  handleEnd(state: GameServerJSON) {
+    this.importState(state);
+    this.emit("end");
     this.ws.close(1000, "Game ended");
   }
 }
