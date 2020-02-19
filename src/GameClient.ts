@@ -8,9 +8,9 @@ import {
   GameGenerateProps
 } from "@meka-js/core";
 import WebSocket from "isomorphic-ws";
-import { User as UserModel } from "./api";
+import { User as UserModel } from "./API";
 
-export type ClientJSON = { id: string; userId: string };
+export type ClientJSON = { id: string; user: UserModel };
 type GameServerStatus = "open" | "ready" | "inprogress" | "paused" | "ended";
 type UserWrapper = { user: UserModel; isReady: boolean };
 type ClockJSON = { tickTime: number; tickCount: number };
@@ -27,7 +27,7 @@ type GameServerJSON = {
   winnerId?: string | null;
 };
 
-class Clock {
+class Clock extends EventEmitter {
   timeout: NodeJS.Timeout;
   tickTime: number;
   tickCount: number;
@@ -39,6 +39,7 @@ class Clock {
       autoStart?: boolean;
     } = {}
   ) {
+    super();
     this.tickTime = props.tickTime || 250;
     this.tickCount = props.tickCount || 0;
     if (props.autoStart) this.tick(0);
@@ -46,6 +47,7 @@ class Clock {
 
   tick(count?: number) {
     this.tickCount = count || this.tickCount + 1;
+    this.emit("tick", this.tickCount);
     this.timeout = setTimeout(() => this.tick(), this.tickTime);
   }
 
@@ -87,10 +89,10 @@ export default class GameClient extends EventEmitter {
 
   get userToClientMap() {
     const clientMap: { [userId: string]: ClientJSON[] } = {};
-    this.clientList.forEach(clientJson => {
-      clientMap[clientJson.userId] = [
-        ...(clientMap[clientJson.userId] || []),
-        clientJson
+    this.clientList.forEach(client => {
+      clientMap[client.user.uid] = [
+        ...(clientMap[client.user.uid] || []),
+        client
       ];
     });
     return clientMap;
@@ -201,6 +203,7 @@ export default class GameClient extends EventEmitter {
 
   handleDownload(state: GameServerJSON) {
     this.importState(state);
+    this.emit("download");
   }
 
   handleAddClient(state: GameServerJSON, data: ClientJSON) {

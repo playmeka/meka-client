@@ -1,5 +1,5 @@
 import GameClient from "./GameClient";
-import API from "./api";
+import API from "./API";
 
 type ClientProps = {
   gameId: string;
