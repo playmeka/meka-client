@@ -4,7 +4,9 @@ import {
   GameJSON,
   Action,
   ActionJSON,
-  Command,
+  CommandResponse,
+  CommandResponseJSON,
+  CommandChildClass,
   GameGenerateProps
 } from "@meka-js/core";
 import WebSocket from "isomorphic-ws";
@@ -150,7 +152,7 @@ export default class GameClient extends EventEmitter {
     this.ws.send(JSON.stringify(message));
   }
 
-  sendCommands(commands: Command[]) {
+  sendCommands(commands: CommandChildClass[]) {
     const message = {
       eventType: "commands",
       data: { commands: commands.map(command => command.toJSON()) }
@@ -158,7 +160,7 @@ export default class GameClient extends EventEmitter {
     this.ws.send(JSON.stringify(message));
   }
 
-  sendCommand(command: Command) {
+  sendCommand(command: CommandChildClass) {
     return this.sendCommands([command]);
   }
 
@@ -228,7 +230,11 @@ export default class GameClient extends EventEmitter {
 
   async handleTick(
     _: GameServerJSON,
-    data: { turn: number; actions: ActionJSON[] }
+    data: {
+      turn: number;
+      commandResponses: CommandResponseJSON[];
+      actions: ActionJSON[];
+    }
   ) {
     if (!this.game) return;
     if (data.turn != this.game.turn + 1) {
@@ -236,11 +242,14 @@ export default class GameClient extends EventEmitter {
       this.requestDownload();
       return;
     }
-    const actions = data.actions.map(actionJSON =>
-      Action.fromJSON(this.game as Game, actionJSON)
+    const actions = data.actions.map(actionJson =>
+      Action.fromJSON(this.game, actionJson)
     );
     await this.game.importTurn(data.turn, actions);
-    this.emit("tick", actions);
+    const commandResponses = data.commandResponses.map(responseJson =>
+      CommandResponse.fromJSON(this.game, responseJson)
+    );
+    this.emit("tick", commandResponses);
   }
 
   handleReady(state: GameServerJSON) {
