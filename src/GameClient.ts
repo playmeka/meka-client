@@ -249,7 +249,7 @@ export default class GameClient extends EventEmitter {
     const commandResponses = data.commandResponses.map(responseJson =>
       CommandResponse.fromJSON(this.game, responseJson)
     );
-    this.emit("tick", commandResponses);
+    this.emit("tick", commandResponses, actions);
   }
 
   handleReady(state: GameServerJSON) {
