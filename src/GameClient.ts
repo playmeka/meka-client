@@ -2,11 +2,11 @@ import { EventEmitter } from "events";
 import {
   Game,
   GameJSON,
-  Action,
+  actionFromJSON,
   ActionJSON,
   CommandResponse,
   CommandResponseJSON,
-  CommandChildClass,
+  Command,
   GameGenerateProps
 } from "@meka-js/core";
 import WebSocket from "isomorphic-ws";
@@ -152,7 +152,7 @@ export default class GameClient extends EventEmitter {
     this.ws.send(JSON.stringify(message));
   }
 
-  sendCommands(commands: CommandChildClass[]) {
+  sendCommands(commands: Command[]) {
     const message = {
       eventType: "commands",
       data: { commands: commands.map(command => command.toJSON()) }
@@ -160,7 +160,7 @@ export default class GameClient extends EventEmitter {
     this.ws.send(JSON.stringify(message));
   }
 
-  sendCommand(command: CommandChildClass) {
+  sendCommand(command: Command) {
     return this.sendCommands([command]);
   }
 
@@ -243,7 +243,7 @@ export default class GameClient extends EventEmitter {
       return;
     }
     const actions = data.actions.map(actionJson =>
-      Action.fromJSON(this.game, actionJson)
+      actionFromJSON(this.game, actionJson)
     );
     await this.game.importTurn(data.turn, actions);
     const commandResponses = data.commandResponses.map(responseJson =>
