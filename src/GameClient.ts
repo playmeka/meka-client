@@ -84,7 +84,7 @@ export default class GameClient extends EventEmitter {
   forfeitAtTick?: number;
   winnerId?: string | null;
   game?: Game;
-  unitToCommandMap: { [id: string]: CommandChildClass };
+  unitToCommandMap: { [id: string]: Command };
 
   constructor(gameId: string) {
     super();
@@ -236,7 +236,7 @@ export default class GameClient extends EventEmitter {
       this.unitToCommandMap[unitId] = commandClass.fromJSON(
         this.game,
         commandJson as any // TODO: specify particular child class JSON
-      ) as CommandChildClass;
+      );
     });
     if (isFirstImport && this.status) {
       this.emit("connected");
