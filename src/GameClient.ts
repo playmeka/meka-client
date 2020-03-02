@@ -85,6 +85,7 @@ export default class GameClient extends EventEmitter {
   winnerId?: string | null;
   game?: Game;
   unitToCommandMap: { [id: string]: Command };
+  isConnected: boolean;
 
   constructor(gameId: string) {
     super();
@@ -93,6 +94,7 @@ export default class GameClient extends EventEmitter {
     this.userMap = {};
     this.clock = new Clock();
     this.unitToCommandMap = {};
+    this.isConnected = false;
   }
 
   get clientList() {
@@ -204,7 +206,6 @@ export default class GameClient extends EventEmitter {
   }
 
   importState(state: GameServerJSON) {
-    const isFirstImport = !this.status; // Check if game exists already
     this.game = state.game ? Game.fromJSON(state.game) : undefined;
     this.clock.syncWith(state.clock);
     this.status = state.status;
@@ -238,7 +239,8 @@ export default class GameClient extends EventEmitter {
         commandJson as any // TODO: specify particular child class JSON
       );
     });
-    if (isFirstImport && this.status) {
+    if (!this.isConnected) {
+      this.isConnected = true; // Used to record first import
       this.emit("connected");
     }
   }
