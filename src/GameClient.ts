@@ -4,17 +4,13 @@ import {
   GameJSON,
   actionFromJSON,
   ActionJSON,
-  AttackCommand,
-  MoveCommand,
-  DropOffFoodCommand,
-  PickUpFoodCommand,
-  SpawnCommand,
   Unit,
   CommandJSON,
   CommandResponse,
   CommandResponseJSON,
   Command,
-  GameGenerateProps
+  GameGenerateProps,
+  commandFromJSON
 } from "@meka-js/core";
 import WebSocket from "isomorphic-ws";
 import { User as UserModel } from "./API";
@@ -227,17 +223,7 @@ export default class GameClient extends EventEmitter {
     this.unitToCommandMap = {};
     Object.keys(state.unitToCommandMap).forEach(unitId => {
       const commandJson = state.unitToCommandMap[unitId];
-      const commandClass = {
-        MoveCommand,
-        AttackCommand,
-        DropOffFoodCommand,
-        PickUpFoodCommand,
-        SpawnCommand
-      }[commandJson.className];
-      this.unitToCommandMap[unitId] = commandClass.fromJSON(
-        this.game,
-        commandJson as any // TODO: specify particular child class JSON
-      );
+      this.unitToCommandMap[unitId] = commandFromJSON(this.game, commandJson);
     });
     if (!this.isConnected) {
       this.isConnected = true; // Used to record first import
