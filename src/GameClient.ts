@@ -17,6 +17,7 @@ import { User as UserModel } from "./API";
 
 export type ClientJSON = { id: string; user: UserModel };
 type GameServerStatus = "open" | "ready" | "inprogress" | "paused" | "ended";
+type GameType = "ranked" | "dev";
 type UserWrapper = { user: UserModel; isReady: boolean };
 type ClockJSON = { tickTime: number; tickCount: number };
 type GameServerJSON = {
@@ -30,6 +31,7 @@ type GameServerJSON = {
   startAtTick?: number;
   forfeitAtTick?: number;
   winnerId?: string | null;
+  type: GameType;
   unitToCommandMap: { [id: string]: CommandJSON };
 };
 
@@ -80,6 +82,7 @@ export default class GameClient extends EventEmitter {
   forfeitAtTick?: number;
   winnerId?: string | null;
   game?: Game;
+  type: GameType;
   unitToCommandMap: { [id: string]: Command };
   isConnected: boolean;
 
@@ -205,6 +208,7 @@ export default class GameClient extends EventEmitter {
     this.game = state.game ? Game.fromJSON(state.game) : undefined;
     this.clock.syncWith(state.clock);
     this.status = state.status;
+    this.type = state.type;
     this.gameProps = state.gameProps;
     this.startAtTick = state.startAtTick;
     this.forfeitAtTick = state.forfeitAtTick;
