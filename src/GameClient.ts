@@ -4,10 +4,13 @@ import {
   GameJSON,
   actionFromJSON,
   ActionJSON,
+  Unit,
+  CommandJSON,
   CommandResponse,
   CommandResponseJSON,
   Command,
-  GameGenerateProps
+  GameGenerateProps,
+  commandFromJSON
 } from "@meka-js/core";
 import WebSocket from "isomorphic-ws";
 import { User as UserModel } from "./API";
@@ -29,6 +32,7 @@ type GameServerJSON = {
   forfeitAtTick?: number;
   winnerId?: string | null;
   type: GameType;
+  unitToCommandMap: { [id: string]: CommandJSON };
 };
 
 class Clock extends EventEmitter {
@@ -79,6 +83,8 @@ export default class GameClient extends EventEmitter {
   winnerId?: string | null;
   game?: Game;
   type: GameType;
+  unitToCommandMap: { [id: string]: Command };
+  isConnected: boolean;
 
   constructor(gameId: string) {
     super();
@@ -86,6 +92,8 @@ export default class GameClient extends EventEmitter {
     this.clientMap = {};
     this.userMap = {};
     this.clock = new Clock();
+    this.unitToCommandMap = {};
+    this.isConnected = false;
   }
 
   get clientList() {
@@ -111,8 +119,16 @@ export default class GameClient extends EventEmitter {
     return this.userList.filter(userWrapper => userWrapper.isReady);
   }
 
+  get turn() {
+    return this.game ? this.game.turn : undefined;
+  }
+
   clientsForUser(userId: string) {
     return this.userToClientMap[userId] || [];
+  }
+
+  unitIsBusy(unit: Unit) {
+    return !!this.unitToCommandMap[unit.id];
   }
 
   createWebSocket(webSocketUrl: string, webSocketToken: string) {
@@ -194,17 +210,29 @@ export default class GameClient extends EventEmitter {
     this.status = state.status;
     this.type = state.type;
     this.gameProps = state.gameProps;
+    this.startAtTick = state.startAtTick;
+    this.forfeitAtTick = state.forfeitAtTick;
+    this.winnerId = state.winnerId;
+    // Client map
     this.clientMap = {};
     state.clients.forEach(clientJson => {
       this.clientMap[clientJson.id] = clientJson;
     });
+    // User map
     this.userMap = {};
     state.users.forEach(userWrapper => {
       this.userMap[userWrapper.user.uid] = userWrapper;
     });
-    this.startAtTick = state.startAtTick;
-    this.forfeitAtTick = state.forfeitAtTick;
-    this.winnerId = state.winnerId;
+    // Unit to command map
+    this.unitToCommandMap = {};
+    Object.keys(state.unitToCommandMap).forEach(unitId => {
+      const commandJson = state.unitToCommandMap[unitId];
+      this.unitToCommandMap[unitId] = commandFromJSON(this.game, commandJson);
+    });
+    if (!this.isConnected) {
+      this.isConnected = true; // Used to record first import
+      this.emit("connected");
+    }
   }
 
   handleDownload(state: GameServerJSON) {
@@ -232,24 +260,19 @@ export default class GameClient extends EventEmitter {
     this.emit("readyuser", data);
   }
 
-  async handleTick(
-    _: GameServerJSON,
+  handleTick(
+    state: GameServerJSON,
     data: {
       turn: number;
+      unitToCommandMapJson: { [id: string]: CommandJSON };
       commandResponses: CommandResponseJSON[];
       actions: ActionJSON[];
     }
   ) {
-    if (!this.game) return;
-    if (data.turn != this.game.turn + 1) {
-      console.log("Out of sync!");
-      this.requestDownload();
-      return;
-    }
+    this.importState(state);
     const actions = data.actions.map(actionJson =>
       actionFromJSON(this.game, actionJson)
     );
-    await this.game.importTurn(data.turn, actions);
     const commandResponses = data.commandResponses.map(responseJson =>
       CommandResponse.fromJSON(this.game, responseJson)
     );
