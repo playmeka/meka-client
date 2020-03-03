@@ -14,6 +14,7 @@ import { User as UserModel } from "./API";
 
 export type ClientJSON = { id: string; user: UserModel };
 type GameServerStatus = "open" | "ready" | "inprogress" | "paused" | "ended";
+type GameType = "ranked" | "dev";
 type UserWrapper = { user: UserModel; isReady: boolean };
 type ClockJSON = { tickTime: number; tickCount: number };
 type GameServerJSON = {
@@ -27,6 +28,7 @@ type GameServerJSON = {
   startAtTick?: number;
   forfeitAtTick?: number;
   winnerId?: string | null;
+  type: GameType;
 };
 
 class Clock extends EventEmitter {
@@ -76,6 +78,7 @@ export default class GameClient extends EventEmitter {
   forfeitAtTick?: number;
   winnerId?: string | null;
   game?: Game;
+  type: GameType;
 
   constructor(gameId: string) {
     super();
@@ -189,6 +192,7 @@ export default class GameClient extends EventEmitter {
     this.game = state.game ? Game.fromJSON(state.game) : undefined;
     this.clock.syncWith(state.clock);
     this.status = state.status;
+    this.type = state.type;
     this.gameProps = state.gameProps;
     this.clientMap = {};
     state.clients.forEach(clientJson => {
