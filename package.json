@@ -1,6 +1,6 @@
 {
   "name": "@meka-js/client",
-  "version": "0.0.10",
+  "version": "0.0.11",
   "main": "dist/index.js",
   "author": "Hill Street Labs",
   "license": "MIT",
