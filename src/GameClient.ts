@@ -139,7 +139,11 @@ export default class GameClient extends EventEmitter {
         this.ws.onmessage = this.handleMessage.bind(this);
         this.ws.onopen = resolve.bind(this);
         this.ws.onerror = (error: WebSocket.ErrorEvent) => {
-          reject(error);
+          reject(
+            new Error(
+              `Unable to connect to game ${this.gameId}: ${error.message}`
+            )
+          );
         };
       } catch (e) {
         reject(e);
